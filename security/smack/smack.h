@@ -374,6 +374,16 @@ static inline struct inode_smack *smack_inode(const struct inode *inode)
 	return inode->i_security + smack_blob_sizes.lbs_inode;
 }
 
+static inline struct smack_known **smack_msg_msg(const struct msg_msg *msg)
+{
+	return msg->security + smack_blob_sizes.lbs_msg_msg;
+}
+
+static inline struct smack_known **smack_ipc(const struct kern_ipc_perm *ipc)
+{
+	return ipc->security + smack_blob_sizes.lbs_ipc;
+}
+
 /*
  * Is the directory transmuting?
  */
