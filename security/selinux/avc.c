@@ -852,8 +852,9 @@ static int avc_update_node(struct selinux_avc *avc,
 	 * and won't audit anything at all, leading to silent denials in
 	 * permissive mode that only appear when in enforcing mode.
 	 *
-	 * See the corresponding handling of MAY_NOT_BLOCK in avc_audit()
-	 * and selinux_inode_permission().
+	 * See the corresponding handling in slow_avc_audit(), and the
+	 * logic in selinux_inode_permission for the MAY_NOT_BLOCK flag,
+	 * which is transliterated into AVC_NONBLOCKING.
 	 */
 	if (flags & AVC_NONBLOCKING)
 		return 0;
@@ -1188,25 +1189,6 @@ int avc_has_perm(struct selinux_state *state, u32 ssid, u32 tsid, u16 tclass,
 
 	rc2 = avc_audit(state, ssid, tsid, tclass, requested, &avd, rc,
 			auditdata, 0);
-	if (rc2)
-		return rc2;
-	return rc;
-}
-
-int avc_has_perm_flags(struct selinux_state *state,
-		       u32 ssid, u32 tsid, u16 tclass, u32 requested,
-		       struct common_audit_data *auditdata,
-		       int flags)
-{
-	struct av_decision avd;
-	int rc, rc2;
-
-	rc = avc_has_perm_noaudit(state, ssid, tsid, tclass, requested,
-				  (flags & MAY_NOT_BLOCK) ? AVC_NONBLOCKING : 0,
-				  &avd);
-
-	rc2 = avc_audit(state, ssid, tsid, tclass, requested, &avd, rc,
-			auditdata, flags);
 	if (rc2)
 		return rc2;
 	return rc;
