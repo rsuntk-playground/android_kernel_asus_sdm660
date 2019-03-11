@@ -475,14 +475,6 @@ struct vm_operations_struct {
 	ANDROID_KABI_RESERVE(4);
 };
 
-static inline void INIT_VMA(struct vm_area_struct *vma)
-{
-	INIT_LIST_HEAD(&vma->anon_vma_chain);
-#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
-	seqcount_init(&vma->vm_sequence);
-#endif
-}
-
 static inline void vma_init(struct vm_area_struct *vma, struct mm_struct *mm)
 {
 	static const struct vm_operations_struct dummy_vm_ops = {};
@@ -490,7 +482,7 @@ static inline void vma_init(struct vm_area_struct *vma, struct mm_struct *mm)
 	memset(vma, 0, sizeof(*vma));
 	vma->vm_mm = mm;
 	vma->vm_ops = &dummy_vm_ops;
-	INIT_VMA(vma);
+	INIT_LIST_HEAD(&vma->anon_vma_chain);
 }
 
 static inline void vma_set_anonymous(struct vm_area_struct *vma)
@@ -1402,6 +1394,11 @@ struct zap_details {
 	struct page *single_page;		/* Locked page to be unmapped */
 };
 
+static inline void INIT_VMA(struct vm_area_struct *vma)
+{
+	INIT_LIST_HEAD(&vma->anon_vma_chain);
+}
+
 struct page *_vm_normal_page(struct vm_area_struct *vma, unsigned long addr,
 			     pte_t pte, bool with_public_device);
 #define vm_normal_page(vma, addr, pte) _vm_normal_page(vma, addr, pte, false)
@@ -1475,34 +1472,6 @@ int follow_phys(struct vm_area_struct *vma, unsigned long address,
 		unsigned int flags, unsigned long *prot, resource_size_t *phys);
 int generic_access_phys(struct vm_area_struct *vma, unsigned long addr,
 			void *buf, int len, int write);
-
-#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
-static inline void vm_write_begin(struct vm_area_struct *vma)
-{
-        /*
-         * Isolated vma might be freed without exclusive mmap_lock but
-         * speculative page fault handler still needs to know it was changed.
-         */
-        if (!RB_EMPTY_NODE(&vma->vm_rb))
-		WARN_ON_ONCE(!rwsem_is_locked(&(vma->vm_mm)->mmap_sem));
-	/*
-	 * The reads never spins and preemption
-	 * disablement is not required.
-	 */
-	raw_write_seqcount_begin(&vma->vm_sequence);
-}
-static inline void vm_write_end(struct vm_area_struct *vma)
-{
-	raw_write_seqcount_end(&vma->vm_sequence);
-}
-#else
-static inline void vm_write_begin(struct vm_area_struct *vma)
-{
-}
-static inline void vm_write_end(struct vm_area_struct *vma)
-{
-}
-#endif /* CONFIG_SPECULATIVE_PAGE_FAULT */
 
 extern void truncate_pagecache(struct inode *inode, loff_t new);
 extern void truncate_setsize(struct inode *inode, loff_t newsize);
