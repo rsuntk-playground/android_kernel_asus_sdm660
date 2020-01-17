@@ -110,6 +110,9 @@ struct selinux_state {
 	bool android_netlink_route;
 	bool android_netlink_getneigh;
 
+	struct page *status_page;
+	struct mutex status_lock;
+
 	struct selinux_avc *avc;
 	struct selinux_ss *ss;
 } __randomize_layout;
