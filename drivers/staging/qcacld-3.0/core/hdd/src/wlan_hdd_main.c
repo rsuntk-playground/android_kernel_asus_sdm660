@@ -14322,6 +14322,8 @@ static void __hdd_inform_wifi_off(void)
 	ucfg_blm_wifi_off(hdd_ctx->pdev);
 }
 
+static int hdd_driver_load(void);
+
 static void hdd_inform_wifi_off(void)
 {
 	int ret;
