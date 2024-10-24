@@ -2408,12 +2408,14 @@ static void bpf_link_show_fdinfo(struct seq_file *m, struct file *filp)
 	}
 	seq_printf(m, "link_id:\t%u\n", link->id);
 
-	bin2hex(prog_tag, prog->tag, sizeof(prog->tag));
-	seq_printf(m,
-		   "prog_tag:\t%s\n"
-		   "prog_id:\t%u\n",
-		   prog_tag,
-		   prog->aux->id);
+	if (prog) {
+		bin2hex(prog_tag, prog->tag, sizeof(prog->tag));
+		seq_printf(m,
+			   "prog_tag:\t%s\n"
+			   "prog_id:\t%u\n",
+			   prog_tag,
+			   prog->aux->id);
+	}
 	if (link->ops->show_fdinfo)
 		link->ops->show_fdinfo(link, m);
 }
