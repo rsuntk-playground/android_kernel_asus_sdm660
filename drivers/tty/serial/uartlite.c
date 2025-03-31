@@ -818,27 +818,20 @@ static int __init ulite_init(void)
 	pr_debug("uartlite: calling uart_register_driver()\n");
 	ret = uart_register_driver(&ulite_uart_driver);
 	if (ret)
-		goto err_uart;
+		return ret;
 
 	pr_debug("uartlite: calling platform_driver_register()\n");
 	ret = platform_driver_register(&ulite_platform_driver);
 	if (ret)
-		goto err_plat;
+		uart_unregister_driver(&ulite_uart_driver);
 
-	return 0;
-
-err_plat:
-	uart_unregister_driver(&ulite_uart_driver);
-err_uart:
-	pr_err("registering uartlite driver failed: err=%i\n", ret);
 	return ret;
 }
 
 static void __exit ulite_exit(void)
 {
 	platform_driver_unregister(&ulite_platform_driver);
-	if (ulite_uart_driver.state)
-		uart_unregister_driver(&ulite_uart_driver);
+	uart_unregister_driver(&ulite_uart_driver);
 }
 
 module_init(ulite_init);
