@@ -1,4 +1,6 @@
 # Makefile for the Himax touchscreen drivers.
+ccflags-y += -Wno-vla-extension
+
 obj-$(CONFIG_TOUCHSCREEN_HIMAX_ONCELL)		+=	himax_ic_oncell_core.o
 obj-$(CONFIG_TOUCHSCREEN_HIMAX_IC_HX852xH)	+=	himax_ic_HX852xH.o
 obj-$(CONFIG_TOUCHSCREEN_HIMAX_IC_HX852xG)	+=	himax_ic_HX852xG.o
