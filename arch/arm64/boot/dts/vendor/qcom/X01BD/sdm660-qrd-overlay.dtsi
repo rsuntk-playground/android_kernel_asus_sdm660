@@ -46,7 +46,6 @@
 };
 
 &i2c_4{
-	status = "ok";
 	qcom,disable-dma;
 	
 	/* Novatek device tree node */
@@ -54,7 +53,6 @@
 		compatible = "novatek,NVT-ts";
 		com,i2c-touch-active = "novatek, NVT-ts";
 		reg = <0x62>;
-		status = "ok";
 
 		vdd-supply = <&pm660_l11>;    //VDDIO
 		avdd-supply = <&pm660l_l3>;    //VDD
