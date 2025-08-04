@@ -1469,6 +1469,7 @@ struct sk_buff *inet_gro_receive(struct list_head *head, struct sk_buff *skb)
 
 	list_for_each_entry(p, head, list) {
 		struct iphdr *iph2;
+		u16 flush_id;
 
 		if (!NAPI_GRO_CB(p)->same_flow)
 			continue;
@@ -1494,23 +1495,34 @@ struct sk_buff *inet_gro_receive(struct list_head *head, struct sk_buff *skb)
 
 		NAPI_GRO_CB(p)->flush |= flush;
 
-		/* For non-atomic datagrams we need to save the IP ID offset
-		 * to be included later.  If the frame has the DF bit set
-		 * we must ignore the IP ID value as per RFC 6864.
+		/* We need to store of the IP ID check to be included later
+		 * when we can verify that this packet does in fact belong
+		 * to a given flow.
 		 */
-		if (iph2->frag_off & htons(IP_DF))
-			continue;
+		flush_id = (u16)(id - ntohs(iph2->id));
 
-		/* We must save the offset as it is possible to have multiple
-		 * flows using the same protocol and address pairs so we
-		 * need to wait until we can validate this is part of the
-		 * same flow with a 5-tuple or better to avoid unnecessary
-		 * collisions between flows.
+		/* This bit of code makes it much easier for us to identify
+		 * the cases where we are doing atomic vs non-atomic IP ID
+		 * checks.  Specifically an atomic check can return IP ID
+		 * values 0 - 0xFFFF, while a non-atomic check can only
+		 * return 0 or 0xFFFF.
 		 */
-		NAPI_GRO_CB(p)->flush_id |= ntohs(iph2->id) ^
-					    (u16)(id - NAPI_GRO_CB(p)->count);
+		if (!NAPI_GRO_CB(p)->is_atomic ||
+		    !(iph->frag_off & htons(IP_DF))) {
+			flush_id ^= NAPI_GRO_CB(p)->count;
+			flush_id = flush_id ? 0xFFFF : 0;
+		}
+
+		/* If the previous IP ID value was based on an atomic
+		 * datagram we can overwrite the value and ignore it.
+		 */
+		if (NAPI_GRO_CB(skb)->is_atomic)
+			NAPI_GRO_CB(p)->flush_id = flush_id;
+		else
+			NAPI_GRO_CB(p)->flush_id |= flush_id;
 	}
 
+	NAPI_GRO_CB(skb)->is_atomic = !!(iph->frag_off & htons(IP_DF));
 	NAPI_GRO_CB(skb)->flush |= flush;
 	skb_set_network_header(skb, off);
 	/* The above will be needed by the transport layer if there is one
