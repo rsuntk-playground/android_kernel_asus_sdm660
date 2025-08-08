@@ -178,7 +178,7 @@ bpf_probe_read_user_str_common(void *dst, u32 size,
 {
 	int ret;
 
-	ret = strncpy_from_user_nofault(dst, unsafe_ptr, size);
+	ret = strncpy_from_unsafe_user(dst, unsafe_ptr, size);
 	if (unlikely(ret < 0))
 		memset(dst, 0, size);
 	return ret;
