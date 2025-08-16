@@ -882,7 +882,7 @@ static void be_cmd_unlock(struct be_adapter *adapter)
 	if (use_mcc(adapter))
 		spin_unlock_bh(&adapter->mcc_lock);
 	else
-		return mutex_unlock(&adapter->mbox_lock);
+		mutex_unlock(&adapter->mbox_lock);
 }
 
 static struct be_mcc_wrb *be_cmd_copy(struct be_adapter *adapter,
