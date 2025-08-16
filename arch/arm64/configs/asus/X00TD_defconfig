@@ -4,7 +4,7 @@
 #
 
 #
-# Compiler: Android (13818152, +pgo, +bolt, +lto, +mlgo, based on r563880b) clang version 21.0.0 (https://android.googlesource.com/toolchain/llvm-project 5e96669f06077099aa41290cdb4c5e6fa0f59349)
+# Compiler: Android (13783749, +pgo, +bolt, +lto, +mlgo, based on r563880) clang version 21.0.0 (https://android.googlesource.com/toolchain/llvm-project 5e96669f06077099aa41290cdb4c5e6fa0f59349)
 #
 CONFIG_GCC_VERSION=0
 CONFIG_CC_IS_CLANG=y
@@ -29,8 +29,8 @@ CONFIG_THREAD_INFO_IN_TASK=y
 #
 CONFIG_INIT_ENV_ARG_LIMIT=32
 # CONFIG_COMPILE_TEST is not set
-CONFIG_LOCALVERSION="-Kiriyama"
-CONFIG_LOCALVERSION_AUTO=y
+CONFIG_LOCALVERSION="-Rissu"
+# CONFIG_LOCALVERSION_AUTO is not set
 CONFIG_BUILD_SALT=""
 CONFIG_HAVE_KERNEL_GZIP=y
 CONFIG_HAVE_KERNEL_LZ4=y
@@ -5656,15 +5656,6 @@ CONFIG_QCOM_KGSL_IOMMU=y
 CONFIG_LEGACY_ENERGY_MODEL_DT=y
 
 #
-# KernelSU
-#
-CONFIG_KSU=y
-# CONFIG_KSU_DEBUG is not set
-# CONFIG_KSU_ALLOWLIST_WORKAROUND is not set
-# CONFIG_KSU_CMDLINE is not set
-CONFIG_KSU_MANUAL_HOOK=y
-
-#
 # File systems
 #
 CONFIG_DCACHE_WORD_ACCESS=y
@@ -5824,6 +5815,7 @@ CONFIG_PSTORE_COMPRESS_DEFAULT="deflate"
 CONFIG_PSTORE_CONSOLE=y
 CONFIG_PSTORE_PMSG=y
 CONFIG_PSTORE_RAM=y
+CONFIG_PSTORE_LAST_KMSG=y
 # CONFIG_SYSV_FS is not set
 # CONFIG_UFS_FS is not set
 # CONFIG_NETWORK_FILESYSTEMS is not set
