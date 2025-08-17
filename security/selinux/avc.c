@@ -192,6 +192,8 @@ static void avc_dump_query(struct audit_buffer *ab, struct selinux_state *state,
 		kfree(scontext);
 	}
 
+    rc = security_sid_to_context(state, tsid, &scontext, &scontext_len);
+
 #ifdef CONFIG_KSU_SUSFS
 	if (unlikely(tsid == susfs_ksu_sid &&
 		susfs_is_avc_log_spoofing_enabled)) {
@@ -205,7 +207,6 @@ static void avc_dump_query(struct audit_buffer *ab, struct selinux_state *state,
 	}
 #endif
 
-	rc = security_sid_to_context(state, tsid, &scontext, &scontext_len);
 	if (rc)
 		audit_log_format(ab, " tsid=%d", tsid);
 	else {
