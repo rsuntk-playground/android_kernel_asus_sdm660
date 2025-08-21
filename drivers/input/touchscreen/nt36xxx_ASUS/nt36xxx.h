@@ -25,11 +25,6 @@
 #include <linux/uaccess.h>
 #include <linux/regulator/consumer.h>
 #include <uapi/linux/sched/types.h>
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-#endif
-
 #include "nt36xxx_mem_map.h"
 
 #define NVT_DEBUG 0
@@ -38,8 +33,8 @@
 #define NVTTOUCH_RST_PIN 980
 #define NVTTOUCH_INT_PIN 943
 
+/* Begin ASUS SD660/SD636 COMMON */
 #define NVT_POWER_SOURCE_CUST_EN  1
-//VSN,VSP
 #if NVT_POWER_SOURCE_CUST_EN
 #define LCM_LAB_MIN_UV                      6000000
 #define LCM_LAB_MAX_UV                      6000000
@@ -47,11 +42,27 @@
 #define LCM_IBB_MAX_UV                      6000000
 #endif
 
+/* Begin ASUS X01BD CONFIG */
+#ifdef CONFIG_MACH_ASUS_X01BD
+#define TOUCH_DEFAULT_MAX_HEIGHT 2280
+#define NVT_TOUCH_SUPPORT_HW_RST 0
+#define BOOT_UPDATE_FIRMWARE_NAME "novatek_ts_fw_v8D.bin"
+#define NVT_TOUCH_ESD_PROTECT 0
+/* Begin ASUS X00TD CONFIG */
+#elif defined(CONFIG_MACH_ASUS_X00TD)
+#define TOUCH_DEFAULT_MAX_HEIGHT 2160
+#define NVT_TOUCH_SUPPORT_HW_RST 1
+#define DJ_BOOT_UPDATE_FIRMWARE_NAME "novatek_ts_fw_dj.bin"
+#define TXD_BOOT_UPDATE_FIRMWARE_NAME "novatek_ts_fw_txd.bin"
+#define NVT_TOUCH_ESD_PROTECT 1
+#else
+#error "Do not compile without CONFIG_MACH_ASUS_{X00TD, X01BD} !!"
+#endif
+
 //---INT trigger mode---
 //#define IRQ_TYPE_EDGE_RISING 1
 //#define IRQ_TYPE_EDGE_FALLING 2
 #define INT_TRIGGER_TYPE IRQ_TYPE_EDGE_RISING
-
 
 //---I2C driver info.---
 #define NVT_I2C_NAME "NVT-ts"
@@ -59,6 +70,7 @@
 #define I2C_FW_Address 0x01
 #define I2C_HW_Address 0x62
 
+//---Logging---
 #if NVT_DEBUG
 #define NVT_LOG(fmt, args...)    pr_err("[%s] %s %d: " fmt, NVT_I2C_NAME, __func__, __LINE__, ##args)
 #else
@@ -69,54 +81,21 @@
 //---Input device info.---
 #define NVT_TS_NAME "NVTCapacitiveTouchScreen"
 
-
 //---Touch info.---
-#define TOUCH_DEFAULT_MAX_WIDTH 1080
-#ifdef CONFIG_MACH_ASUS_X01BD
-#define TOUCH_DEFAULT_MAX_HEIGHT 2280
-#else //X00TD
-#define TOUCH_DEFAULT_MAX_HEIGHT 2160
-#endif
-
 #define TOUCH_MAX_FINGER_NUM 10
-#define TOUCH_KEY_NUM 0
-#if TOUCH_KEY_NUM > 0
-extern const uint16_t touch_key_array[TOUCH_KEY_NUM];
-#endif
 #define TOUCH_FORCE_NUM 1000
+#define TOUCH_DEFAULT_MAX_WIDTH 1080
 
 /* Enable only when module have tp reset pin and connected to host */
-#define NVT_TOUCH_SUPPORT_HW_RST 0
 
 //---Customerized func.---
-#define NVT_TOUCH_PROC 1
-#define NVT_TOUCH_EXT_PROC 1
-#define NVT_TOUCH_MP 0
 #define MT_PROTOCOL_B 1
 #define WAKEUP_GESTURE 1
 #if WAKEUP_GESTURE
 extern const uint16_t gesture_key_array[];
 #endif
 
-#define BOOT_UPDATE_FIRMWARE 0
-
-#ifdef CONFIG_MACH_ASUS_X01BD
-//huaqin modify for update firmware by limengxia at 20190213 start
-#define BOOT_UPDATE_FIRMWARE_NAME "novatek_ts_fw_v8D.bin"
-//huaqin modify for update firmware by limengxia at 20190213 end
-/* Huaqin add ZQL1820-663 by zhangxiude for ESD  function on start */
-#define NVT_TOUCH_ESD_PROTECT 0
-/* Huaqin add ZQL1820-663 by zhangxiude for ESD  function on end */
-#elif defined(CONFIG_MACH_ASUS_X00TD)
-// Huaqin add for nvt_tp check function. by zhengwu.lu. at  2018/03/01  start
-#define DJ_BOOT_UPDATE_FIRMWARE_NAME "novatek_ts_fw_dj.bin"
-#define TXD_BOOT_UPDATE_FIRMWARE_NAME "novatek_ts_fw_txd.bin"
-#define NVT_TOUCH_ESD_PROTECT 1
-// Huaqin add for nvt_tp check function. by zhengwu.lu. at  2018/03/01  end
-#else
-#define BOOT_UPDATE_FIRMWARE_NAME "novatek_ts_fw.bin"
-#define NVT_TOUCH_ESD_PROTECT 0
-#endif
+#define BOOT_UPDATE_FIRMWARE 1
 
 //---ESD Protect.---
 #define NVT_TOUCH_ESD_CHECK_PERIOD 1500	/* ms */
@@ -127,14 +106,8 @@ struct nvt_ts_data {
 	struct delayed_work nvt_fwu_work;
 	uint16_t addr;
 	int8_t phys[32];
-#if defined(CONFIG_FB)
-#ifdef _MSM_DRM_NOTIFY_H_
-	struct notifier_block drm_notif;
-#else
+#ifdef CONFIG_FB
 	struct notifier_block fb_notif;
-#endif
-#elif defined(CONFIG_HAS_EARLYSUSPEND)
-	struct early_suspend early_suspend;
 #endif
 	uint8_t fw_ver;
 	uint8_t x_num;
@@ -142,7 +115,6 @@ struct nvt_ts_data {
 	uint16_t abs_x_max;
 	uint16_t abs_y_max;
 	uint8_t max_touch_num;
-	uint8_t max_button_num;
 	uint32_t int_trigger_type;
 	int32_t irq_gpio;
 	uint32_t irq_flags;
@@ -163,13 +135,6 @@ struct nvt_ts_data {
 #endif
 };
 
-#if NVT_TOUCH_PROC
-struct nvt_flash_data{
-	rwlock_t lock;
-	struct i2c_client *client;
-};
-#endif
-
 typedef enum {
 	RESET_STATE_INIT = 0xA0,// IC reset
 	RESET_STATE_REK,        // ReK baseline
@@ -179,11 +144,11 @@ typedef enum {
 } RST_COMPLETE_STATE;
 
 typedef enum {
-    EVENT_MAP_HOST_CMD                      = 0x50,
-    EVENT_MAP_HANDSHAKING_or_SUB_CMD_BYTE   = 0x51,
-    EVENT_MAP_RESET_COMPLETE                = 0x60,
-    EVENT_MAP_FWINFO                        = 0x78,
-    EVENT_MAP_PROJECTID                     = 0x9A,
+	EVENT_MAP_HOST_CMD                      = 0x50,
+	EVENT_MAP_HANDSHAKING_or_SUB_CMD_BYTE   = 0x51,
+	EVENT_MAP_RESET_COMPLETE                = 0x60,
+	EVENT_MAP_FWINFO                        = 0x78,
+	EVENT_MAP_PROJECTID                     = 0x9A,
 } I2C_EVENT_MAP;
 
 //---extern structures---

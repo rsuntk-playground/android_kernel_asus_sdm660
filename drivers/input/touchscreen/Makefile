@@ -113,8 +113,10 @@ obj-$(CONFIG_TOUCHSCREEN_ST)		+= st/
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX) += synaptics_dsx/
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_TCM)	+= synaptics_tcm/
 obj-$(CONFIG_TOUCHSCREEN_FTS)	+= focaltech_touch/
-obj-$(CONFIG_TOUCHSCREEN_NT36xxx)	+= NVT_Touch_X01BD/
 obj-$(CONFIG_TOUCHSCREEN_HIMAX_CHIPSET)	+= hxchipset_X01BD/
-obj-$(CONFIG_TOUCHSCREEN_NT36xxx_X00TD)	+= NVT_Touch_X00TD/
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_X00TD) += synaptics_dsx_X00TD/
-obj-$(CONFIG_TOUCHSCREEN_NT36xxx_ASUS)	+= NVT_Touch_ASUS/
+
+# NT36XXX drivers for asus
+obj-y	+= nt36xxx_X01BD/
+obj-y	+= nt36xxx_X00TD/
+obj-y	+= nt36xxx_ASUS/

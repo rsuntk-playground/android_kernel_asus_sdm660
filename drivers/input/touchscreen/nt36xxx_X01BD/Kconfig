@@ -1,8 +1,9 @@
 #
 # Novatek NT36xxx touchscreen driver configuration
 #
-config TOUCHSCREEN_NT36xxx
-	bool "Novatek NT36xxx"
+config TOUCHSCREEN_NT36XXX_X01BD
+	bool "ASUS_X01BD Novatek NT36xxx touchscreen driver"
+	depends on MACH_ASUS_X01BD
 	default n
 	help
 	  Say Y here if you have a Novatek NT36xxx touchscreen connected
