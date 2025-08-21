@@ -1,9 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Novatek NT36xxx touchscreen driver configuration
 #
-config TOUCHSCREEN_NT36xxx_X00TD
-	bool "Novatek NT36xxx"
-	default n
+config TOUCHSCREEN_NT36XXX_ASUS
+	bool "ASUS X01BD and X00TD Novatek NT36xxx touchscreen driver"
 	help
 	  Say Y here if you have a Novatek NT36xxx touchscreen connected
 	  to your system.

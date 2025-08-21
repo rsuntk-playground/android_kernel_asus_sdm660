@@ -2,6 +2,16 @@
 # Himax Touchscreen driver configuration
 #
 
+config TOUCHSCREEN_HIMAX_CHIPSET
+	bool "Himax touchpanel CHIPSET"
+	depends on I2C
+	help
+	  Say Y here if you have a Himax CHIPSET touchscreen.
+	  HIMAX controllers are multi touch controllers which can
+	  report 10 touches at a time.
+
+          If unsure, say N.
+
 config TOUCHSCREEN_HIMAX_COMMON
         tristate "HIMAX chipset i2c touchscreen"
 		depends on TOUCHSCREEN_HIMAX_CHIPSET
