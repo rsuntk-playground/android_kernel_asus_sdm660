@@ -255,7 +255,6 @@ static const struct file_operations gesture_mode_proc_ops = {
 /* function page definition */
 #define FUNCPAGE_GESTURE         1
 
-static struct wakeup_source *gesture_wakelock;
 inline void nvt_ts_wakeup_gesture_report(uint8_t gesture_id, uint8_t *data)
 {
 	uint32_t keycode = 0;
@@ -666,7 +665,7 @@ static inline irqreturn_t nvt_ts_work_func(int irq, void *data)
 
 #if WAKEUP_GESTURE
 	if (unlikely(bTouchIsAwake == 0)) {
-		__pm_wakeup_event(gesture_wakelock, msecs_to_jiffies(5000));
+		__pm_wakeup_event(ts->gesture_wakeup, msecs_to_jiffies(5000));
 	}
 #endif
 
@@ -993,7 +992,7 @@ static inline int32_t nvt_ts_probe(struct i2c_client *client,
 	for (retry = 0; retry < ARRAY_SIZE(gesture_key_array); retry++) {
 		input_set_capability(ts->input_dev, EV_KEY, gesture_key_array[retry]);
 	}
-	gesture_wakelock = wakeup_source_register(NULL, "poll-wake-lock");
+	ts->gesture_wakeup = wakeup_source_register(NULL, "poll-wake-lock");
 #endif
 
 	snprintf(ts->phys, sizeof(ts->phys), "input/ts");
