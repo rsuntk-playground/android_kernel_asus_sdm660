@@ -24,6 +24,7 @@
 #include <linux/input.h>
 #include <linux/uaccess.h>
 #include <linux/regulator/consumer.h>
+#include <linux/pm_wakeup.h>
 #include <uapi/linux/sched/types.h>
 #include "nt36xxx_mem_map.h"
 
@@ -124,6 +125,7 @@ struct nvt_ts_data {
 	const struct nvt_ts_mem_map *mmap;
 	uint8_t carrier_system;
 	uint16_t nvt_pid;
+	struct wakeup_source *gesture_wakeup;
 	uint8_t xbuf[1025];
 	struct mutex xbuf_lock;
 	bool irq_enabled;
