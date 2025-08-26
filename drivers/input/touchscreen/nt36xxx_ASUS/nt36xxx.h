@@ -49,13 +49,15 @@
 #define NVT_TOUCH_SUPPORT_HW_RST 0
 #define BOOT_UPDATE_FIRMWARE_NAME "novatek_ts_fw_v8D.bin"
 #define NVT_TOUCH_ESD_PROTECT 0
+#define BOOT_UPDATE_FIRMWARE 0
 /* Begin ASUS X00TD CONFIG */
 #elif defined(CONFIG_MACH_ASUS_X00TD)
 #define TOUCH_DEFAULT_MAX_HEIGHT 2160
-#define NVT_TOUCH_SUPPORT_HW_RST 1
+#define NVT_TOUCH_SUPPORT_HW_RST 0
 #define DJ_BOOT_UPDATE_FIRMWARE_NAME "novatek_ts_fw_dj.bin"
 #define TXD_BOOT_UPDATE_FIRMWARE_NAME "novatek_ts_fw_txd.bin"
 #define NVT_TOUCH_ESD_PROTECT 1
+#define BOOT_UPDATE_FIRMWARE 1
 #else
 #error "Do not compile without CONFIG_MACH_ASUS_{X00TD, X01BD} !!"
 #endif
@@ -95,8 +97,6 @@
 #if WAKEUP_GESTURE
 extern const uint16_t gesture_key_array[];
 #endif
-
-#define BOOT_UPDATE_FIRMWARE 1
 
 //---ESD Protect.---
 #define NVT_TOUCH_ESD_CHECK_PERIOD 1500	/* ms */
