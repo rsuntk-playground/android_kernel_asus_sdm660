@@ -22,6 +22,7 @@
 #include <linux/swap.h>
 #include <linux/splice.h>
 #include <linux/sched.h>
+#include <linux/freezer.h>
 
 MODULE_ALIAS_MISCDEV(FUSE_MINOR);
 MODULE_ALIAS("devname:fuse");
@@ -142,6 +143,24 @@ static void fuse_drop_waiting(struct fuse_conn *fc)
 	}
 }
 
+static inline void task_freezable(void)
+{
+	try_to_freeze();
+	schedule();
+}
+
+#define __wait_event_freeze_state_exclusive(wq, condition, state)		\
+	___wait_event(wq, condition, state, 1, 0, task_freezable())
+
+#define wait_event_freeze_state_exclusive(wq, condition, state)				\
+({											\
+	int __ret = 0;									\
+	might_sleep();									\
+	if (!(condition))								\
+		__ret = __wait_event_freeze_state_exclusive(wq, condition, state);	\
+	__ret;										\
+})
+
 static struct fuse_req *__fuse_get_req(struct fuse_conn *fc, unsigned npages,
 				       bool for_background)
 {
@@ -151,9 +170,9 @@ static struct fuse_req *__fuse_get_req(struct fuse_conn *fc, unsigned npages,
 
 	if (fuse_block_alloc(fc, for_background)) {
 		err = -EINTR;
-		if (wait_event_state_exclusive(fc->blocked_waitq,
+		if (wait_event_freeze_state_exclusive(fc->blocked_waitq,
 				!fuse_block_alloc(fc, for_background),
-				(TASK_KILLABLE | TASK_FREEZABLE)))
+				TASK_KILLABLE))
 			goto out;
 	}
 	/* Matches smp_wmb() in fuse_set_initialized() */
