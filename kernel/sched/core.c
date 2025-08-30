@@ -2874,6 +2874,7 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags,
 		wake_flags |= WF_MIGRATED;
 		psi_ttwu_dequeue(p);
 		set_task_cpu(p, cpu);
+	}
 #else /* CONFIG_SMP */
 
 	if (p->in_iowait) {
