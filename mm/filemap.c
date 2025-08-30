@@ -2538,14 +2538,15 @@ static struct file *do_sync_mmap_readahead(struct vm_fault *vmf)
 	struct address_space *mapping = file->f_mapping;
 	struct file *fpin = NULL;
 	pgoff_t offset = vmf->pgoff;
+	unsigned int ra_pages;
 
 	/* If we don't want any read-ahead, don't bother */
-	if (vmf->vma_flags & VM_RAND_READ)
+	if (vmf->vma->vm_flags & VM_RAND_READ)
 		return fpin;
 	if (!ra->ra_pages)
 		return fpin;
 
-	if (vmf->vma_flags & VM_SEQ_READ) {
+	if (vmf->vma->vm_flags & VM_SEQ_READ) {
 		fpin = maybe_unlock_mmap_for_io(vmf, fpin);
 		page_cache_sync_readahead(mapping, ra, file, offset,
 					  ra->ra_pages);
@@ -2567,9 +2568,14 @@ static struct file *do_sync_mmap_readahead(struct vm_fault *vmf)
 	 * mmap read-around
 	 */
 	fpin = maybe_unlock_mmap_for_io(vmf, fpin);
-	ra->start = max_t(long, 0, offset - ra->ra_pages / 2);
-	ra->size = ra->ra_pages;
-	ra->async_size = ra->ra_pages / 4;
+#if CONFIG_MMAP_READAROUND_LIMIT == 0
+	ra_pages = ra->ra_pages;
+#else
+	ra_pages = min_t(unsigned int, ra->ra_pages, CONFIG_MMAP_READAROUND_LIMIT);
+#endif
+	ra->start = max_t(long, 0, offset - ra_pages / 2);
+	ra->size = ra_pages;
+	ra->async_size = ra_pages / 4;
 	ra_submit(ra, mapping, file);
 	return fpin;
 }
@@ -2612,9 +2618,7 @@ static struct file *do_async_mmap_readahead(struct vm_fault *vmf,
  * it in the page cache, and handles the special cases reasonably without
  * having a lot of duplicated code.
  *
- * If FAULT_FLAG_SPECULATIVE is set, this function runs with elevated vma
- * refcount and with mmap lock not held.
- * Otherwise, vma->vm_mm->mmap_sem must be held on entry.
+ * vma->vm_mm->mmap_sem must be held on entry.
  *
  * If our return value has VM_FAULT_RETRY set, it's because
  * lock_page_or_retry() returned 0.
@@ -2638,52 +2642,6 @@ vm_fault_t filemap_fault(struct vm_fault *vmf)
 	pgoff_t max_off;
 	struct page *page;
 	vm_fault_t ret = 0;
-
-	if (vmf->flags & FAULT_FLAG_SPECULATIVE) {
-		page = find_get_page(mapping, offset);
-		if (unlikely(!page))
-			return VM_FAULT_RETRY;
-
-		if (unlikely(PageReadahead(page)))
-			goto page_put;
-
-		if (!trylock_page(page))
-			goto page_put;
-
-		if (unlikely(compound_head(page)->mapping != mapping))
-			goto page_unlock;
-		VM_BUG_ON_PAGE(page_to_pgoff(page) != offset, page);
-		if (unlikely(!PageUptodate(page)))
-			goto page_unlock;
-
-		max_off = DIV_ROUND_UP(i_size_read(inode), PAGE_SIZE);
-		if (unlikely(offset >= max_off))
-			goto page_unlock;
-
-		/*
-		 * Update readahead mmap_miss statistic.
-		 *
-		 * Note that we are not sure if finish_fault() will
-		 * manage to complete the transaction. If it fails,
-		 * we'll come back to filemap_fault() non-speculative
-		 * case which will update mmap_miss a second time.
-		 * This is not ideal, we would prefer to guarantee the
-		 * update will happen exactly once.
-		 */
-		if (!(vmf->vma->vm_flags & VM_RAND_READ) && ra->ra_pages) {
-			unsigned int mmap_miss = READ_ONCE(ra->mmap_miss);
-			if (mmap_miss)
-				WRITE_ONCE(ra->mmap_miss, --mmap_miss);
-		}
-
-		vmf->page = page;
-		return VM_FAULT_LOCKED;
-page_unlock:
-		unlock_page(page);
-page_put:
-		put_page(page);
-		return VM_FAULT_RETRY;
-	}
 
 	max_off = DIV_ROUND_UP(i_size_read(inode), PAGE_SIZE);
 	if (unlikely(offset >= max_off))
@@ -2862,14 +2820,6 @@ repeat:
 		if (vmf->pte)
 			vmf->pte += iter.index - last_pgoff;
 		last_pgoff = iter.index;
-
-		if (want_old_faultaround_pte) {
-			if (iter.index == vmf->pgoff)
-				vmf->flags &= ~FAULT_FLAG_PREFAULT_OLD;
-			else
-				vmf->flags |= FAULT_FLAG_PREFAULT_OLD;
-		}
-
 		if (alloc_set_pte(vmf, NULL, page))
 			goto unlock;
 		unlock_page(page);
