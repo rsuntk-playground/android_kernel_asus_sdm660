@@ -316,7 +316,7 @@ static void inode_free_security(struct inode *inode)
 
 	if (!isec)
 		return;
-	sbsec = selinux_superblock(inode->i_sb);
+	sbsec = inode->i_sb->s_security;
 	/*
 	 * As not all inode security structures are in a list, we check for
 	 * empty list outside of the lock to make sure that we won't waste
@@ -332,6 +332,13 @@ static void inode_free_security(struct inode *inode)
 		list_del_init(&isec->list);
 		spin_unlock(&sbsec->isec_lock);
 	}
+}
+
+static void superblock_free_security(struct super_block *sb)
+{
+	struct superblock_security_struct *sbsec = sb->s_security;
+	sb->s_security = NULL;
+	kfree(sbsec);
 }
 
 enum {
@@ -409,7 +416,7 @@ static int selinux_is_genfs_special_handling(struct super_block *sb)
 
 static int selinux_is_sblabel_mnt(struct super_block *sb)
 {
-	struct superblock_security_struct *sbsec = selinux_superblock(sb);
+	struct superblock_security_struct *sbsec = sb->s_security;
 
 	/*
 	 * IMPORTANT: Double-check logic in this function when adding a new
@@ -437,7 +444,7 @@ static int selinux_is_sblabel_mnt(struct super_block *sb)
 
 static int sb_check_xattr_support(struct super_block *sb)
 {
-	struct superblock_security_struct *sbsec = selinux_superblock(sb);
+	struct superblock_security_struct *sbsec = sb->s_security;
 	struct dentry *root = sb->s_root;
 	struct inode *root_inode = d_backing_inode(root);
 	u32 sid;
@@ -486,7 +493,7 @@ fallback:
 
 static int sb_finish_set_opts(struct super_block *sb)
 {
-	struct superblock_security_struct *sbsec = selinux_superblock(sb);
+	struct superblock_security_struct *sbsec = sb->s_security;
 	struct dentry *root = sb->s_root;
 	struct inode *root_inode = d_backing_inode(root);
 	int rc = 0;
@@ -567,7 +574,7 @@ static int selinux_set_mnt_opts(struct super_block *sb,
 {
 	const struct cred *cred = current_cred();
 	int rc = 0, i;
-	struct superblock_security_struct *sbsec = selinux_superblock(sb);
+	struct superblock_security_struct *sbsec = sb->s_security;
 	const char *name = sb->s_type->name;
 	struct dentry *root = sbsec->sb->s_root;
 	struct inode_security_struct *root_isec;
@@ -825,8 +832,8 @@ out_double_mount:
 static int selinux_cmp_sb_context(const struct super_block *oldsb,
 				    const struct super_block *newsb)
 {
-	struct superblock_security_struct *old = selinux_superblock(oldsb);
-	struct superblock_security_struct *new = selinux_superblock(newsb);
+	struct superblock_security_struct *old = oldsb->s_security;
+	struct superblock_security_struct *new = newsb->s_security;
 	char oldflags = old->flags & SE_MNTMASK;
 	char newflags = new->flags & SE_MNTMASK;
 
@@ -858,9 +865,8 @@ static int selinux_sb_clone_mnt_opts(const struct super_block *oldsb,
 					unsigned long *set_kern_flags)
 {
 	int rc = 0;
-	const struct superblock_security_struct *oldsbsec =
-						selinux_superblock(oldsb);
-	struct superblock_security_struct *newsbsec = selinux_superblock(newsb);
+	const struct superblock_security_struct *oldsbsec = oldsb->s_security;
+	struct superblock_security_struct *newsbsec = newsb->s_security;
 
 	int set_fscontext =	(oldsbsec->flags & FSCONTEXT_MNT);
 	int set_context =	(oldsbsec->flags & CONTEXT_MNT);
@@ -1078,7 +1084,7 @@ static int show_sid(struct seq_file *m, u32 sid)
 
 static int selinux_sb_show_options(struct seq_file *m, struct super_block *sb)
 {
-	struct superblock_security_struct *sbsec = selinux_superblock(sb);
+	struct superblock_security_struct *sbsec = sb->s_security;
 	int rc;
 
 	if (!(sbsec->flags & SE_SBINITIALIZED))
@@ -1428,7 +1434,7 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
 	if (isec->sclass == SECCLASS_FILE)
 		isec->sclass = inode_mode_to_security_class(inode->i_mode);
 
-	sbsec = selinux_superblock(inode->i_sb);
+	sbsec = inode->i_sb->s_security;
 	if (!(sbsec->flags & SE_SBINITIALIZED)) {
 		/* Defer initialization until selinux_complete_init,
 		   after the initial policy is loaded and the security
@@ -1777,8 +1783,7 @@ selinux_determine_inode_label(const struct task_security_struct *tsec,
 				 const struct qstr *name, u16 tclass,
 				 u32 *_new_isid)
 {
-	const struct superblock_security_struct *sbsec =
-						selinux_superblock(dir->i_sb);
+	const struct superblock_security_struct *sbsec = dir->i_sb->s_security;
 
 	if ((sbsec->flags & SE_SBINITIALIZED) &&
 	    (sbsec->behavior == SECURITY_FS_USE_MNTPOINT)) {
@@ -1809,7 +1814,7 @@ static int may_create(struct inode *dir,
 	int rc;
 
 	dsec = inode_security(dir);
-	sbsec = selinux_superblock(dir->i_sb);
+	sbsec = dir->i_sb->s_security;
 
 	sid = tsec->sid;
 
@@ -1958,7 +1963,7 @@ static int superblock_has_perm(const struct cred *cred,
 	struct superblock_security_struct *sbsec;
 	u32 sid = cred_sid(cred);
 
-	sbsec = selinux_superblock(sb);
+	sbsec = sb->s_security;
 	return avc_has_perm(&selinux_state,
 			    sid, sbsec->sid, SECCLASS_FILESYSTEM, perms, ad);
 }
@@ -2595,7 +2600,11 @@ static void selinux_bprm_committed_creds(struct linux_binprm *bprm)
 
 static int selinux_sb_alloc_security(struct super_block *sb)
 {
-	struct superblock_security_struct *sbsec = selinux_superblock(sb);
+	struct superblock_security_struct *sbsec;
+
+	sbsec = kzalloc(sizeof(struct superblock_security_struct), GFP_KERNEL);
+	if (!sbsec)
+		return -ENOMEM;
 
 	mutex_init(&sbsec->lock);
 	INIT_LIST_HEAD(&sbsec->isec_head);
@@ -2604,8 +2613,14 @@ static int selinux_sb_alloc_security(struct super_block *sb)
 	sbsec->sid = SECINITSID_UNLABELED;
 	sbsec->def_sid = SECINITSID_FILE;
 	sbsec->mntpoint_sid = SECINITSID_UNLABELED;
+	sb->s_security = sbsec;
 
 	return 0;
+}
+
+static void selinux_sb_free_security(struct super_block *sb)
+{
+	superblock_free_security(sb);
 }
 
 static inline int match_prefix(char *prefix, int plen, char *option, int olen)
@@ -2704,7 +2719,7 @@ static int selinux_sb_remount(struct super_block *sb, void *data)
 	int rc, i, *flags;
 	struct security_mnt_opts opts;
 	char *secdata, **mount_options;
-	struct superblock_security_struct *sbsec = selinux_superblock(sb);
+	struct superblock_security_struct *sbsec = sb->s_security;
 
 	if (!(sbsec->flags & SE_SBINITIALIZED))
 		return 0;
@@ -2926,7 +2941,7 @@ static int selinux_inode_init_security(struct inode *inode, struct inode *dir,
 	int rc;
 	char *context;
 
-	sbsec = selinux_superblock(dir->i_sb);
+	sbsec = dir->i_sb->s_security;
 
 	newsid = tsec->create_sid;
 
@@ -3226,7 +3241,7 @@ static int selinux_inode_setxattr(struct dentry *dentry, const char *name,
 	if (!selinux_initialized(&selinux_state))
 		return (inode_owner_or_capable(inode) ? 0 : -EPERM);
 
-	sbsec = selinux_superblock(inode->i_sb);
+	sbsec = inode->i_sb->s_security;
 	if (!(sbsec->flags & SBLABEL_MNT))
 		return -EOPNOTSUPP;
 
@@ -3416,14 +3431,13 @@ static int selinux_inode_setsecurity(struct inode *inode, const char *name,
 				     const void *value, size_t size, int flags)
 {
 	struct inode_security_struct *isec = inode_security_novalidate(inode);
-	struct superblock_security_struct *sbsec;
+	struct superblock_security_struct *sbsec = inode->i_sb->s_security;
 	u32 newsid;
 	int rc;
 
 	if (strcmp(name, XATTR_SELINUX_SUFFIX))
 		return -EOPNOTSUPP;
 
-	sbsec = selinux_superblock(inode->i_sb);
 	if (!(sbsec->flags & SBLABEL_MNT))
 		return -EOPNOTSUPP;
 
@@ -6931,7 +6945,6 @@ struct lsm_blob_sizes selinux_blob_sizes __lsm_ro_after_init = {
 	.lbs_inode = sizeof(struct inode_security_struct),
 	.lbs_ipc = sizeof(struct ipc_security_struct),
 	.lbs_msg_msg = sizeof(struct msg_security_struct),
-	.lbs_superblock = sizeof(struct superblock_security_struct),
 };
 
 /*
@@ -6971,6 +6984,7 @@ static struct security_hook_list selinux_hooks[] __lsm_ro_after_init = {
 	LSM_HOOK_INIT(bprm_committing_creds, selinux_bprm_committing_creds),
 	LSM_HOOK_INIT(bprm_committed_creds, selinux_bprm_committed_creds),
 
+	LSM_HOOK_INIT(sb_free_security, selinux_sb_free_security),
 	LSM_HOOK_INIT(sb_copy_data, selinux_sb_copy_data),
 	LSM_HOOK_INIT(sb_remount, selinux_sb_remount),
 	LSM_HOOK_INIT(sb_kern_mount, selinux_sb_kern_mount),
