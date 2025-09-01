@@ -82,10 +82,6 @@
 #include "binder_alloc.h"
 #include "binder_internal.h"
 
-#ifdef CONFIG_SAMSUNG_FREECESS
-#include <linux/freecess.h>
-#endif
-
 static HLIST_HEAD(binder_deferred_list);
 static DEFINE_MUTEX(binder_deferred_lock);
 
