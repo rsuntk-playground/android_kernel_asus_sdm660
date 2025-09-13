@@ -1861,8 +1861,8 @@ struct path *collect_paths(const struct path *path,
 			      struct path *prealloc, unsigned count)
 {
 	struct mount *root = real_mount(path->mnt);
-	struct mount *child;
-	struct path *res = prealloc, *to_free = NULL;
+	struct mount *child, *m;
+	struct path *res = prealloc, *to_free = NULL, *p;
 	unsigned n = 0;
 
 	down_read(&namespace_sem);
@@ -1875,7 +1875,7 @@ struct path *collect_paths(const struct path *path,
 	list_for_each_entry(child, &root->mnt_mounts, mnt_child) {
 		if (!is_subdir(child->mnt_mountpoint, path->dentry))
 			continue;
-		for (struct mount *m = child; m; m = next_mnt(m, child)) {
+		for (m = child; m; m = next_mnt(m, child)) {
 			if (!extend_array(&res, &to_free, n, &count, 2 * count))
 				return ERR_PTR(-ENOMEM);
 			res[n].mnt = &m->mnt;
@@ -1886,7 +1886,7 @@ struct path *collect_paths(const struct path *path,
 	if (!extend_array(&res, &to_free, n, &count, count + 1))
 		return ERR_PTR(-ENOMEM);
 	memset(res + n, 0, (count - n) * sizeof(struct path));
-	for (struct path *p = res; p->mnt; p++)
+	for (p = res; p->mnt; p++)
 		path_get(p);
 
 	up_read(&namespace_sem);
@@ -1895,7 +1895,8 @@ struct path *collect_paths(const struct path *path,
 
 void drop_collected_paths(struct path *paths, struct path *prealloc)
 {
-	for (struct path *p = paths; p->mnt; p++)
+	struct path *p;
+	for (p = paths; p->mnt; p++)
 		path_put(p);
 	if (paths != prealloc)
 		kfree(paths);
